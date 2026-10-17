@@ -1,3 +1,3 @@
 name: hermes3d
-version: "1.0"
+version: "1.0.1"
 description: Opens the Hermes3D 3D office as a page inside Hermes Desktop (sidebar row + command palette).
