@@ -9,7 +9,9 @@ page.on('websocket', socket => { if (socket.url().includes('/api/gateway/ws')) s
 try {
   await page.addInitScript(() => localStorage.setItem('hermes3d:onboarding:completed', 'true'))
   await page.goto('http://127.0.0.1:3000/office')
-  await page.waitForTimeout(35000)
+  await page.waitForFunction(() => [...document.querySelectorAll('[title]')].some(n => /^Runtime:.*\(connected\)$/.test(n.title)), { timeout: 35000 }).catch(() => {})
+  // Settle after the handshake to observe post-connect exceptions without an unconditional 35s sleep.
+  await page.waitForTimeout(2000)
   const connected = await page.locator('[title]').evaluateAll(nodes => nodes.some(n => /^Runtime:.*\(connected\)$/.test(n.title)))
   const text = await page.locator('body').innerText()
   const result = { connected, consoleErrors: [...errors], socketErrors: sockets, timedOut: text.includes('Timed out connecting'), scope: 'Isolated Chromium, live Studio and live backend; no chat or agent writes.' }

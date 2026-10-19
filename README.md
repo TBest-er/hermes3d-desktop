@@ -41,4 +41,14 @@ For a separate live gateway/renderer check:
 node tests/runtime.mjs
 ```
 
-This skips onboarding **only in an isolated browser context**, captures console errors, and fails unless a connected runtime indicator appears. It does not send chats, create agents or change server settings. See `qa/report.md` for the verified results and remaining blockers.
+### Studio / Next 16.1.7 HMR compatibility
+
+If Studio's gateway times out while its `/_next/webpack-hmr` WebSocket never finishes the handshake, the inspected custom server routes HMR through a no-op Next server handler. Chromium can queue the gateway WebSocket behind that unfinished connection. The reviewed compatibility script switches to the prepared router's upgrade handler:
+
+```sh
+node scripts/fix-studio-hmr.mjs /path/to/Hermes3D
+```
+
+Restart **only Studio** after applying. The script is idempotent, saves a backup, and refuses unreviewed Next versions or changed server layouts. It has been applied and live-tested on the local Studio deployment; it does not change authentication, gateway credentials, or Next dependencies. This is a narrowly version-bound compatibility patch, not a permanent framework API guarantee.
+
+The runtime test skips onboarding **only in an isolated browser context**, captures console errors, and fails unless a connected runtime indicator appears. It does not send chats, create agents or change server settings. See `qa/report.md` for the verified results and remaining limitations.

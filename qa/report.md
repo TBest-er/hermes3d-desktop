@@ -1,4 +1,43 @@
-# Code scan and QA report — 2026-10-17
+# Code scan and live QA — 2026-10-19
+
+## Current result
+
+**Gateway connection is fixed locally. The pixel office renders the actual map and live agent.** Native Electron interactions and GPU-backed 3D rendering are not certified by this run.
+
+### Root cause and correction
+
+CDP showed the `/_next/webpack-hmr` WebSocket sending its handshake but never receiving a response. Chromium created the gateway socket but never sent its handshake before timeout. Suppressing only HMR in an isolated diagnostic browser let the gateway connect immediately.
+
+Studio's custom server uses Next 16.1.7. Its `app.getUpgradeHandler()` delegates to a no-op NextNodeServer handler, while the custom server also removes Next's automatic upgrade listener. The prepared router's handler serves HMR. Corrected `/root/hermes3d/server/index.js` to use:
+
+```js
+const handleUpgrade = app.upgradeHandler ?? app.getUpgradeHandler();
+```
+
+Restarted only Studio; Desktop and Hermes backend were left running. `scripts/fix-studio-hmr.mjs` reproduces this fix, saves a backup, is idempotent, and refuses unknown Next versions or changed source. This is version-bound compatibility, not a guarantee for future Next versions.
+
+### Improvements and verification
+
+- **13 unit tests pass**, including four new patch-routing/idempotency/refusal tests.
+- **16 Chromium integration checks pass**, now including embedded live-backend connection, nonempty agent roster, and a visible office canvas.
+- Live runtime probe: `connected: true`, `timedOut: false`, no captured console or socket errors.
+- Replaced the fixed 35-second runtime delay with readiness polling plus a brief settling period.
+- Pixel-renderer browser tests now disable WebGL to avoid repeated software-GPU initialization during iframe remounts. This tests the supported 2D canvas fallback, not 3D performance.
+- `git diff --check` passed; `npm audit` reported zero vulnerabilities.
+- Graft index refreshed: 8 files, 22 nodes, 45 edges; freshness passed.
+- `qa/office-2d.png` was visually inspected: rooms, desks, office map and the Default agent are visible. Generated captures/results remain git-ignored.
+
+The integration harness uses a real plugin, Studio and backend, but SDK-shaped host stubs for registration/storage/OS. Test preferences change only isolated browser storage. No chats were sent, agents created or credentials changed.
+
+### Remaining limits
+
+Forced-3D probes reached a connected runtime but produced blank/unstable captures and software-WebGL screenshot timeouts; **this is not a 3D scene pass**. No speculative upstream graphics edits were made. A software-WebGL toolbar test also timed out; the final 2D-fallback suite passed. Native Electron menu clicks remain unverified because Desktop CDP was unavailable.
+
+Changes in this pass are local and not pushed. Prior GitHub CI success does not cover these changes.
+
+---
+
+# Historical scan — 2026-10-17 (superseded by current results above)
 
 ## Verdict
 
